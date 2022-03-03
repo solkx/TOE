@@ -234,9 +234,7 @@ class DecoderLayer(nn.Module):
         outputs = (layer_output,) + outputs
         return outputs
 
-"""
-    base+GFM+multi_label
-"""
+
 class Model(nn.Module):
     def __init__(self, config, bert_config):
         super(Model, self).__init__()
@@ -249,7 +247,6 @@ class Model(nn.Module):
         lstm_input_size = 0
 
         if self.use_bert:
-            # self.bert = AutoModel.from_pretrained(config.bert_name, cache_dir="./cache/", output_hidden_states=True)
             self.bert = AutoModel.from_pretrained(config.bert_name, output_hidden_states=True)
             lstm_input_size += config.bert_hid_size
 
@@ -272,9 +269,6 @@ class Model(nn.Module):
 
         self.cln = LayerNorm(config.lstm_hid_size, config.lstm_hid_size, conditional=True)
         
-        
-
-        # self.elu=nn.ELU()
         self.Cr = nn.Linear(config.cr*2, config.label_num*config.label_num)
 
         self.Lr_e1_rev=nn.Linear(config.label_num*config.label_num, config.lstm_hid_size)
@@ -320,11 +314,6 @@ class Model(nn.Module):
         _bert_embs = torch.masked_fill(_bert_embs, pieces2word.eq(0).unsqueeze(-1), min_value)
         word_reps, _ = torch.max(_bert_embs, dim=2)
         word_reps = self.dropout(word_reps)
-        # wr_list = []
-        # for _ in range(2):
-            # word_reps = self.dropout(word_reps)
-            # wr_list.append(self.dropout(word_reps))
-        # word_reps = 0.5 * (wr_list[0] + wr_list[1])
         packed_embs = pack_padded_sequence(word_reps, word_length.cpu(), batch_first=True, enforce_sorted=False)
         packed_outs, (hidden, _) = self.encoder(packed_embs)
         word_reps, _ = pad_packed_sequence(packed_outs, batch_first=True, total_length=word_length.max()) #batch_size, sent_len, 512
@@ -354,8 +343,6 @@ class Model(nn.Module):
 
             B, L = fea_maps.shape[0], fea_maps.shape[1]
             table_logist = self.Cr(fea_maps) # batch_size, sent_len, snet_len, 9
-            # print(table_logist.shape)
-            # exit()
             if i!=self.rounds-1:
                 table_e1 = table_logist.max(dim=2).values # batch_size, sent_len, 9
                 table_e2 = table_logist.max(dim=1).values
@@ -375,219 +362,3 @@ class Model(nn.Module):
         outputs_new = self.predictor_new(word_reps, word_reps, new_fea_maps)
         
         return outputs_old, outputs_new
-
-"""
-    base_modle + GFM
-"""
-# class Model(nn.Module):
-#     def __init__(self, config, bert_config):
-#         super(Model, self).__init__()
-#         self.use_bert = config.use_bert
-#         self.use_bert_last_4_layers = config.use_bert_last_4_layers
-
-#         self.lstm_hid_size = config.lstm_hid_size
-#         self.conv_hid_size = config.conv_hid_size
-
-#         lstm_input_size = 0
-
-#         if self.use_bert:
-#             # self.bert = AutoModel.from_pretrained(config.bert_name, cache_dir="./cache/", output_hidden_states=True)
-#             self.bert = AutoModel.from_pretrained(config.bert_name, output_hidden_states=True)
-#             lstm_input_size += config.bert_hid_size
-
-#         if config.word_emb_size > 0:
-#             self.word_embs = nn.Embedding(3, config.word_emb_size)
-#         else:
-#             self.word_embs = None
-#         self.dis_embs = nn.Embedding(20, config.dist_emb_size)
-#         self.cls_embs = nn.Embedding(3, config.type_emb_size)
-
-#         self.encoder = nn.LSTM(lstm_input_size, config.lstm_hid_size // 2, num_layers=1, batch_first=True,
-#                                bidirectional=True)
-
-#         conv_input_size = config.lstm_hid_size + config.dist_emb_size + config.type_emb_size + config.word_emb_size
-
-#         self.convLayer = ConvolutionLayer(conv_input_size, config.conv_hid_size, config.dilation, config.conv_dropout)
-#         self.dropout = nn.Dropout(config.emb_dropout)
-#         self.predictor = CoPredictor(config.label_num, config.lstm_hid_size, config.biaffine_size,
-#                                      config.conv_hid_size * len(config.dilation), config.ffnn_hid_size, config.out_dropout)
-
-#         self.cln = LayerNorm(config.lstm_hid_size, config.lstm_hid_size, conditional=True)
-        
-        
-
-#         # self.elu=nn.ELU()
-#         self.Cr = nn.Linear(config.cr*2, 3*config.label_num)
-
-#         self.Lr_e1_rev=nn.Linear(3*config.label_num, config.lstm_hid_size)
-#         self.rounds=config.rounds
-#         self.e_layer=DecoderLayer(bert_config)
-#         self.label_num = config.label_num
-        
-#         torch.nn.init.orthogonal_(self.Cr.weight, gain=1)
-#         torch.nn.init.orthogonal_(self.Lr_e1_rev.weight, gain=1)
-#         self.Lr_e1=nn.Linear(config.lstm_hid_size, config.lstm_hid_size)
-#         torch.nn.init.orthogonal_(self.Lr_e1.weight, gain=1)
-#         self.Lr_e2=nn.Linear(bert_config.hidden_size,bert_config.hidden_size)
-#         torch.nn.init.orthogonal_(self.Lr_e2.weight, gain=1)
-#         self.Lr_e2_rev=nn.Linear(3*config.label_num, config.lstm_hid_size)
-#         torch.nn.init.orthogonal_(self.Lr_e2_rev.weight, gain=1)
-#         self.output_l=nn.Linear(3*config.label_num, config.cr*2)
-#         # self.output_ll=nn.Linear(config.label_num, config.ffnn_hid_size*2)
-        
-#         torch.nn.init.orthogonal_(self.output_l.weight, gain=1)
-#         # torch.nn.init.orthogonal_(self.output_ll.weight, gain=1)
-
-#     def forward(self, word_inputs, bert_inputs, char_inputs, grid_mask2d, dist_inputs, pieces2word, word_mask2d):
-#         word_length = word_inputs.ne(0).sum(dim=-1)
-
-#         bert_embs = self.bert(input_ids=bert_inputs, attention_mask=bert_inputs.ne(0).float())
-#         if self.use_bert_last_4_layers:
-#             bert_embs = torch.stack(bert_embs[2][-4:], dim=-1).mean(-1)
-#         else:
-#             bert_embs = bert_embs[0]
-
-#         length = pieces2word.size(1)
-
-#         min_value = torch.min(bert_embs).item()
-
-#         _bert_embs = bert_embs.unsqueeze(1).expand(-1, length, -1, -1)
-#         _bert_embs = torch.masked_fill(_bert_embs, pieces2word.eq(0).unsqueeze(-1), min_value)
-#         word_reps, _ = torch.max(_bert_embs, dim=2)
-#         word_reps = self.dropout(word_reps)
-#         # wr_list = []
-#         # for _ in range(2):
-#             # word_reps = self.dropout(word_reps)
-#             # wr_list.append(self.dropout(word_reps))
-#         # word_reps = 0.5 * (wr_list[0] + wr_list[1])
-#         packed_embs = pack_padded_sequence(word_reps, word_length.cpu(), batch_first=True, enforce_sorted=False)
-#         packed_outs, (hidden, _) = self.encoder(packed_embs)
-#         word_reps, _ = pad_packed_sequence(packed_outs, batch_first=True, total_length=word_length.max()) #batch_size, sent_len, 512
-#         word_reps_1 = self.Lr_e1(word_reps)
-#         word_reps_2 = self.Lr_e2(word_reps)
-#         for i in range(self.rounds):
-#             cln = self.cln(word_reps_1.unsqueeze(2), word_reps_2)
-
-#             dis_emb = self.dis_embs(dist_inputs)
-
-
-#             tril_mask = torch.tril(grid_mask2d.clone().long())
-#             cls_inputs = tril_mask + grid_mask2d.clone().long()
-#             cls_emb = self.cls_embs(cls_inputs)
-
-#             if self.word_embs is None:
-#                 dis_emb = torch.cat([dis_emb, cls_emb, cln], dim=-1)
-#             else:
-#                 word_emb = self.word_embs(word_mask2d)
-#                 dis_emb = torch.cat([dis_emb, cls_emb, word_emb, cln], dim=-1)
-
-#             dis_emb = torch.masked_fill(dis_emb, grid_mask2d.eq(0).unsqueeze(-1), 0.0)
-
-#             fea_maps = self.convLayer(word_reps_1, word_reps_2, dis_emb)
-
-#             fea_maps = torch.masked_fill(fea_maps, grid_mask2d.eq(0).unsqueeze(-1), 0.0) # batch_size, sent_len, snet_len, 240
-
-#             B, L = fea_maps.shape[0], fea_maps.shape[1]
-#             table_logist = self.Cr(fea_maps) # batch_size, sent_len, snet_len, 9
-           
-#             if i!=self.rounds-1:
-#                 table_e1 = table_logist.max(dim=2).values # batch_size, sent_len, 9
-#                 table_e2 = table_logist.max(dim=1).values
-
-#                 e1_ = self.Lr_e1_rev(table_e1) # batch_size, sent_len, 512
-#                 e2_ = self.Lr_e2_rev(table_e2)
-
-#                 word_reps_1 = word_reps_1 + self.e_layer(e1_, word_reps, word_mask2d)[0] # word_mask2d: B,L,L
-#                 word_reps_2 = word_reps_2 + self.e_layer(e2_, word_reps, word_mask2d)[0]
-
-#         # fea_maps = table_logist.reshape([B,L,L,3,self.label_num]).max(dim=3).values
-#         # fea_maps = torch.mean(table_logist.reshape([B,L,L,3,self.label_num]),dim=3)
-#         # fea_maps = self.output_ll(fea_maps)
-#         fea_maps = self.output_l(table_logist)
-#         outputs = self.predictor(word_reps, word_reps, fea_maps)
-#         return outputs, word_reps
-        
-"""
-    base_model
-"""
-# class Model(nn.Module):
-#     def __init__(self, config, bert_config):
-#         super(Model, self).__init__()
-#         self.use_bert = config.use_bert
-#         self.use_bert_last_4_layers = config.use_bert_last_4_layers
-
-#         self.lstm_hid_size = config.lstm_hid_size
-#         self.conv_hid_size = config.conv_hid_size
-
-#         lstm_input_size = 0
-
-#         if self.use_bert:
-#             # self.bert = AutoModel.from_pretrained(config.bert_name, cache_dir="./cache/", output_hidden_states=True)
-#             self.bert = AutoModel.from_pretrained(config.bert_name, output_hidden_states=True)
-#             lstm_input_size += config.bert_hid_size
-
-#         if config.word_emb_size > 0:
-#             self.word_embs = nn.Embedding(3, config.word_emb_size)
-#         else:
-#             self.word_embs = None
-#         self.dis_embs = nn.Embedding(20, config.dist_emb_size)
-#         self.cls_embs = nn.Embedding(3, config.type_emb_size)
-
-#         self.encoder = nn.LSTM(lstm_input_size, config.lstm_hid_size // 2, num_layers=1, batch_first=True,
-#                                bidirectional=True)
-
-#         conv_input_size = config.lstm_hid_size + config.dist_emb_size + config.type_emb_size + config.word_emb_size
-
-#         self.convLayer = ConvolutionLayer(conv_input_size, config.conv_hid_size, config.dilation, config.conv_dropout)
-#         self.dropout = nn.Dropout(config.emb_dropout)
-#         self.predictor = CoPredictor(config.label_num, config.lstm_hid_size, config.biaffine_size,
-#                                      config.conv_hid_size * len(config.dilation), config.ffnn_hid_size, config.out_dropout)
-
-#         self.cln = LayerNorm(config.lstm_hid_size, config.lstm_hid_size, conditional=True)
-
-#     def forward(self, word_inputs, bert_inputs, char_inputs, grid_mask2d, dist_inputs, pieces2word, word_mask2d):
-#         word_length = word_inputs.ne(0).sum(dim=-1)
-
-#         bert_embs = self.bert(input_ids=bert_inputs, attention_mask=bert_inputs.ne(0).float())
-#         if self.use_bert_last_4_layers:
-#             bert_embs = torch.stack(bert_embs[2][-4:], dim=-1).mean(-1)
-#         else:
-#             bert_embs = bert_embs[0]
-
-#         length = pieces2word.size(1)
-
-#         min_value = torch.min(bert_embs).item()
-
-#         _bert_embs = bert_embs.unsqueeze(1).expand(-1, length, -1, -1)
-#         _bert_embs = torch.masked_fill(_bert_embs, pieces2word.eq(0).unsqueeze(-1), min_value)
-#         word_reps, _ = torch.max(_bert_embs, dim=2)
-
-#         word_reps = self.dropout(word_reps)
-#         packed_embs = pack_padded_sequence(word_reps, word_length.cpu(), batch_first=True, enforce_sorted=False)
-#         packed_outs, (hidden, _) = self.encoder(packed_embs)
-#         word_reps, _ = pad_packed_sequence(packed_outs, batch_first=True, total_length=word_length.max())
-
-#         cln = self.cln(word_reps.unsqueeze(2), word_reps)
-
-#         dis_emb = self.dis_embs(dist_inputs)
-
-
-#         tril_mask = torch.tril(grid_mask2d.clone().long())
-#         cls_inputs = tril_mask + grid_mask2d.clone().long()
-#         cls_emb = self.cls_embs(cls_inputs)
-
-#         if self.word_embs is None:
-#             dis_emb = torch.cat([dis_emb, cls_emb, cln], dim=-1)
-#         else:
-#             word_emb = self.word_embs(word_mask2d)
-#             dis_emb = torch.cat([dis_emb, cls_emb, word_emb, cln], dim=-1)
-
-#         dis_emb = torch.masked_fill(dis_emb, grid_mask2d.eq(0).unsqueeze(-1), 0.0)
-
-#         fea_maps = self.convLayer(word_reps, word_reps, dis_emb)
-
-#         fea_maps = torch.masked_fill(fea_maps, grid_mask2d.eq(0).unsqueeze(-1), 0.0)
-
-#         outputs = self.predictor(word_reps, word_reps, fea_maps)
-
-#         return outputs, word_reps
