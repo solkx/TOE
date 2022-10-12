@@ -14,6 +14,7 @@
 ```text
 - python (3.8)
 - cuda (11.4)
+- torch (1.8.1)
 - pip install -r requirements.txt
 ```
 
@@ -33,4 +34,6 @@ Download the pre-training model at the following link:
    * Put the processed data into the directory `data/`
 
 ## 5. Training
-> python main.py --config ./config/cadec.json
+```text
+python main.py --config ./config/cadec.json
+```
