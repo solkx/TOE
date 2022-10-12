@@ -41,23 +41,21 @@ class Trainer(object):
         self.criterion = nn.CrossEntropyLoss()
         # self.criterion = LabelSmoothSoftmaxCEV1(lb_smooth=config.smoothing)
 
-        if config.use_bert:
-            bert_params = set(self.model.bert.parameters())
-            other_params = list(set(self.model.parameters()) - bert_params)
-            no_decay = ['bias', 'LayerNorm.weight']
-            params = [
-                {'params': [p for n, p in model.bert.named_parameters() if not any(nd in n for nd in no_decay)],
-                 'lr': config.bert_learning_rate,
-                 'weight_decay': config.bert_weight_decay},
-                {'params': [p for n, p in model.bert.named_parameters() if any(nd in n for nd in no_decay)],
-                 'lr': config.bert_learning_rate,
-                 'weight_decay': 0.0},
-                {'params': other_params,
-                 'lr': config.learning_rate,
-                 'weight_decay': config.weight_decay},
-            ]
-        else:
-            params = model.parameters()
+  
+        bert_params = set(self.model.bert.parameters())
+        other_params = list(set(self.model.parameters()) - bert_params)
+        no_decay = ['bias', 'LayerNorm.weight']
+        params = [
+            {'params': [p for n, p in model.bert.named_parameters() if not any(nd in n for nd in no_decay)],
+                'lr': config.bert_learning_rate,
+                'weight_decay': config.weight_decay},
+            {'params': [p for n, p in model.bert.named_parameters() if any(nd in n for nd in no_decay)],
+                'lr': config.bert_learning_rate,
+                'weight_decay': 0.0},
+            {'params': other_params,
+                'lr': config.learning_rate,
+                'weight_decay': config.weight_decay},
+        ]
 
         self.optimizer = optim.AdamW(params, lr=config.learning_rate, weight_decay=config.weight_decay)
         # self.scheduler = optim.lr_scheduler.StepLR(self.optimizer, step_size=1, gamma=0.7)
@@ -94,7 +92,7 @@ class Trainer(object):
         pred_result_new = []
         label_result_new = []
         for i, data_batch in enumerate(tqdm(data_loader)):
-            data_batch = [data.cuda() for data in data_batch[:-1]]
+            data_batch = [data.to(device) for data in data_batch[:-1]]
 
             word_inputs, bert_inputs, char_inputs, grid_labels, grid_labels_new, grid_mask2d, pieces2word, dist_inputs, word_mask2d = data_batch
             
@@ -157,7 +155,7 @@ class Trainer(object):
         with torch.no_grad():
             for i, data_batch in enumerate(tqdm(data_loader)):
                 entity_text = data_batch[-1]
-                data_batch = [data.cuda() for data in data_batch[:-1]]
+                data_batch = [data.to(device) for data in data_batch[:-1]]
                 word_inputs, bert_inputs, char_inputs, grid_labels, grid_labels_new, grid_mask2d, pieces2word, dist_inputs, word_mask2d = data_batch
 
                 outputs, outputs_new = model(word_inputs, bert_inputs, char_inputs, grid_mask2d, dist_inputs, pieces2word, word_mask2d)
@@ -238,10 +236,8 @@ import json
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', type=str, default='./config/cadec.json')
-    parser.add_argument('--device', type=int, default=0)
+    parser.add_argument('--cpu_id', type=int, default=0)
 
-    parser.add_argument('--word_emb_size', type=int)
-    parser.add_argument('--char_emb_size', type=int)
     parser.add_argument('--dist_emb_size', type=int)
     parser.add_argument('--type_emb_size', type=int)
     parser.add_argument('--lstm_hid_size', type=int)
@@ -264,10 +260,8 @@ if __name__ == '__main__':
 
     parser.add_argument('--bert_name', type=str)
     parser.add_argument('--bert_learning_rate', type=float)
-    parser.add_argument('--bert_weight_decay', type=float)
     parser.add_argument('--warm_factor', type=float)
 
-    parser.add_argument('--use_bert', type=int, help="1: true, 0: false")
     parser.add_argument('--use_bert_last_4_layers', type=int, help="1: true, 0: false")
 
     parser.add_argument('--seed', type=int)
@@ -288,7 +282,11 @@ if __name__ == '__main__':
     config.logger = logger
 
     if torch.cuda.is_available():
-        torch.cuda.set_device(args.device)
+        device = f"cuda:{args.cpu_id}"
+    else:
+        device = "cpu"
+
+
 
     logger.info("Loading Data")
     datasets = data_loader.load_data_bert(config)
@@ -304,11 +302,10 @@ if __name__ == '__main__':
     )
 
     updates_total = len(datasets[0]) // config.batch_size * config.epochs
-
     logger.info("Building Model")
     model = Model(config, bert_config)
 
-    model = model.cuda()
+    model = model.to(device)
 
     trainer = Trainer(model)
 
@@ -323,6 +320,8 @@ if __name__ == '__main__':
             best_f1 = f1
             best_test_f1 = test_f1
             trainer.save("model.pt")
+        if i >= 8:
+            break
     logger.info("Best DEV F1: {:3.4f}".format(best_f1))
     logger.info("Best TEST F1: {:3.4f}".format(best_test_f1))
     trainer.load("model.pt")

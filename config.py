@@ -17,9 +17,6 @@ class Config:
                     exec(f"self.{key} = bert_config['{key}']")
         else:
             self.dataset = config["dataset"]
-
-            self.word_emb_size = config["word_emb_size"]
-            self.char_emb_size = config["char_emb_size"]
             self.dist_emb_size = config["dist_emb_size"]
             self.type_emb_size = config["type_emb_size"]
             self.lstm_hid_size = config["lstm_hid_size"]
@@ -41,10 +38,8 @@ class Config:
 
             self.bert_name = config["bert_name"]
             self.bert_learning_rate = config["bert_learning_rate"]
-            self.bert_weight_decay = config["bert_weight_decay"]
             self.warm_factor = config["warm_factor"]
 
-            self.use_bert = config["use_bert"]
             self.use_bert_last_4_layers = config["use_bert_last_4_layers"]
 
             self.seed = config["seed"]

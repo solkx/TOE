@@ -46,10 +46,13 @@ class Vocabulary(object):
 
         # self.label2id = {self.PAD: 0, self.SUC: 1}
         # self.id2label = {0: self.PAD, 1: self.SUC}
-        self.old_label_list = [self.SUC, self.PRE, "ht", "th"]
+        # self.old_label_list = [self.SUC, self.PRE, "ht", "th"]
+        self.old_label_list = [self.PRE, "ht"]
         self.new_label_list = [self.NSUC, self.DSUC, self.CON]
-        self.label2id = {self.NSUC: 0, self.DSUC: 1, self.CON: 2, self.SUC: 3, "ht": 4, self.PRE: 5, "th": 6}
-        self.id2label = {0: self.NSUC, 1: self.DSUC, 2: self.CON, 3: self.SUC, 4: "ht", 5: self.PRE, 6: "th"}
+        # self.label2id = {self.NSUC: 0, self.DSUC: 1, self.CON: 2, self.SUC: 3, "ht": 4, self.PRE: 5, "th": 6}
+        self.label2id = {self.NSUC: 0, self.DSUC: 1, self.CON: 2, self.PRE: 3, "ht": 4}
+        # self.id2label = {0: self.NSUC, 1: self.DSUC, 2: self.CON, 3: self.SUC, 4: "ht", 5: self.PRE, 6: "th"}
+        self.id2label = {0: self.NSUC, 1: self.DSUC, 2: self.CON, 3: self.PRE, 4: "ht"}
 
     def add_token(self, token):
         token = token.lower()
@@ -239,7 +242,7 @@ def process_bert(data, tokenizer, vocab):
             for i in range(len(index)):
                 if i == 0:
                     continue
-                _grid_labels_old[index[i], index[i - 1], 1] = 1
+                _grid_labels_old[index[i], index[i - 1], 0] = 1
             new_index = []
             for i in range(len(index)):
                 if i == 0:
@@ -252,9 +255,9 @@ def process_bert(data, tokenizer, vocab):
                         ind = [index[i]]
                 if i + 1 >= len(index):
                     break
-                _grid_labels_old[index[i], index[i + 1], 0] = 1
-            _grid_labels_old[index[-1], index[0], 3] = 1
-            _grid_labels_old[index[0], index[-1], 2] = 1
+                # _grid_labels_old[index[i], index[i + 1], 0] = 1
+            # _grid_labels_old[index[-1], index[0], 1] = 1
+            _grid_labels_old[index[0], index[-1], 1] = 1
             if len(ind) != 0:
                 new_index.append(copy.deepcopy(ind))
             if len(new_index) == 1:
@@ -311,17 +314,14 @@ def load_data_bert(config):
     # train_data = train_data + dev_data
     # dev_data = test_data
 
-    if config.use_bert:
 
-        tokenizer = None
-        while tokenizer is None:
-            try:
-                # tokenizer = AutoTokenizer.from_pretrained(config.bert_name, cache_dir="./cache/")
-                tokenizer = AutoTokenizer.from_pretrained(config.bert_name)
-            except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
-                continue
-    else:
-        tokenizer = None
+    tokenizer = None
+    while tokenizer is None:
+        try:
+            # tokenizer = AutoTokenizer.from_pretrained(config.bert_name, cache_dir="./cache/")
+            tokenizer = AutoTokenizer.from_pretrained(config.bert_name)
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+            continue
 
     vocab = Vocabulary()
     train_ent_num = fill_vocab(vocab, train_data)

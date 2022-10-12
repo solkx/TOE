@@ -238,7 +238,6 @@ class DecoderLayer(nn.Module):
 class Model(nn.Module):
     def __init__(self, config, bert_config):
         super(Model, self).__init__()
-        self.use_bert = config.use_bert
         self.use_bert_last_4_layers = config.use_bert_last_4_layers
 
         self.lstm_hid_size = config.lstm_hid_size
@@ -246,21 +245,16 @@ class Model(nn.Module):
 
         lstm_input_size = 0
 
-        if self.use_bert:
-            self.bert = AutoModel.from_pretrained(config.bert_name, output_hidden_states=True)
-            lstm_input_size += config.bert_hid_size
+        self.bert = AutoModel.from_pretrained(config.bert_name, output_hidden_states=True)
+        lstm_input_size += config.bert_hid_size
 
-        if config.word_emb_size > 0:
-            self.word_embs = nn.Embedding(3, config.word_emb_size)
-        else:
-            self.word_embs = None
         self.dis_embs = nn.Embedding(20, config.dist_emb_size)
         self.cls_embs = nn.Embedding(3, config.type_emb_size)
 
         self.encoder = nn.LSTM(lstm_input_size, config.lstm_hid_size // 2, num_layers=1, batch_first=True,
                                bidirectional=True)
 
-        conv_input_size = config.lstm_hid_size + config.dist_emb_size + config.type_emb_size + config.word_emb_size
+        conv_input_size = config.lstm_hid_size + config.dist_emb_size + config.type_emb_size
 
         self.convLayer = ConvolutionLayer(conv_input_size, config.conv_hid_size, config.dilation, config.conv_dropout)
         self.dropout = nn.Dropout(config.emb_dropout)
@@ -282,7 +276,9 @@ class Model(nn.Module):
         torch.nn.init.orthogonal_(self.Lr_e1.weight, gain=1)
         self.Lr_e2=nn.Linear(bert_config.hidden_size,bert_config.hidden_size)
         torch.nn.init.orthogonal_(self.Lr_e2.weight, gain=1)
+
         self.Lr_e2_rev=nn.Linear(config.label_num*config.label_num, config.lstm_hid_size)
+
         torch.nn.init.orthogonal_(self.Lr_e2_rev.weight, gain=1)
         self.output_old=nn.Linear(config.old_label_num, config.cr*2)
         torch.nn.init.orthogonal_(self.output_old.weight, gain=1)
@@ -329,11 +325,7 @@ class Model(nn.Module):
             cls_inputs = tril_mask + grid_mask2d.clone().long()
             cls_emb = self.cls_embs(cls_inputs)
 
-            if self.word_embs is None:
-                dis_emb = torch.cat([dis_emb, cls_emb, cln], dim=-1)
-            else:
-                word_emb = self.word_embs(word_mask2d)
-                dis_emb = torch.cat([dis_emb, cls_emb, word_emb, cln], dim=-1)
+            dis_emb = torch.cat([dis_emb, cls_emb, cln], dim=-1)
 
             dis_emb = torch.masked_fill(dis_emb, grid_mask2d.eq(0).unsqueeze(-1), 0.0)
 
