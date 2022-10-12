@@ -6,7 +6,7 @@ class Config:
         with open(args.config, "r", encoding="utf-8") as f:
             config = json.load(f)
         if is_bert:
-            with open("./dmis-lab/biobert-base-cased-v1.2/config.json", "r") as f:
+            with open("./config/bert_config/config.json", "r") as f:
                 bert_config = json.loads(f.read())
             for key in bert_config:
                 if key == "hidden_size":
