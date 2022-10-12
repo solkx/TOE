@@ -44,7 +44,8 @@ def decode(outputs, entities, length):
     for index, (instance, ent_set, l) in enumerate(zip(outputs, entities, length)):
         forward_dict = {}
         head_dict = {}
-        # T,L
+
+        # # T,L
         for i in range(l):
             for j in range(l):
                 for f in range(4):
@@ -66,6 +67,7 @@ def decode(outputs, entities, length):
                                 head_dict[j] = {i}
                             else:
                                 head_dict[j].add(i)
+
         predicts = []
 
         def find_entity(key, entity, tails):
