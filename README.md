@@ -1,4 +1,3 @@
-
 # TOE: A Grid-Tagging Model for Discontinuous Named Entity Recognition with Tag-Oriented Enhancement
 
 ### Abstract
