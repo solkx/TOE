@@ -1,4 +1,4 @@
-# [TOE: A Grid-Tagging Model for Discontinuous Named Entity Recognition with Tag-Oriented Enhancement](https://ieeexplore.ieee.org/document/9944897)
+# [TOE: A Grid-Tagging Discontinuous NER Model Enhanced by Embedding Tag/Word Relations and More Fine-Grained Tags](https://ieeexplore.ieee.org/document/9944897)
 
 ## 1. Environments
 ```text
